@@ -1,17 +1,20 @@
+package clinic;
+
 public class Person {
-    public String getSSN(){
-        return null;
+    private String firstName;
+    private String lastName;
+    private String ssn;
+    private Doctor assignedDoctor;
+
+    public Person(String firstName, String lastName, String ssn) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.ssn = ssn;
     }
 
-    public String getFirst() {
-        return null;
-    }
-
-    public String getLast() {
-        return null;
-    }
-
-    public Doctor getDoctor() {
-        return null;
-    }
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
+    public String getSSN() { return ssn; }
+    public Doctor getDoctor() { return assignedDoctor; }
+    public void setDoctor(Doctor doctor) { this.assignedDoctor = doctor; }
 }
