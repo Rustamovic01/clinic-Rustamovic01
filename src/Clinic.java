@@ -1,66 +1,92 @@
+package clinic;
+
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.util.Collection;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Clinic {
-    public void addPatient(String first, String last, String ssn) {
+    private Map<String, Person> patients = new HashMap<>();
+    private Map<String, Doctor> doctors = new HashMap<>();
 
-    }
-
-    public void addDoctor(String first, String last, String ssn, int docID, String specialization) {
-
+    public void addPatient(String firstName, String lastName, String ssn) {
+        patients.put(ssn, new Person(firstName, lastName, ssn));
     }
 
     public Person getPatient(String ssn) throws NoSuchPatient {
-        // TODO Auto-generated method stub
-        return null;
+        Person p = patients.get(ssn);
+        if (p == null) throw new NoSuchPatient();
+        return p;
     }
 
-    public Doctor getDoctor(int docID) throws NoSuchDoctor {
-        // TODO Auto-generated method stub
-        return null;
+    public void addDoctor(String firstName, String lastName, String ssn, String badgeID, String specialization) {
+        Doctor d = new Doctor(firstName, lastName, ssn, badgeID, specialization);
+        doctors.put(badgeID, d);
+        patients.put(ssn, d); // Add doctor as patient too
     }
 
-    public void assignPatientToDoctor(String ssn, int docID) throws NoSuchPatient, NoSuchDoctor {
-
+    public Doctor getDoctor(String badgeID) throws NoSuchDoctor {
+        Doctor d = doctors.get(badgeID);
+        if (d == null) throw new NoSuchDoctor();
+        return d;
     }
 
-    /**
-     * returns the collection of doctors that have no patient at all, sorted in alphabetic order.
-     */
-    Collection<Doctor> idleDoctors(){
-        return null;
-    }
-
-    /**
-     * returns the collection of doctors that a number of patients larger than the average.
-     */
-    Collection<Doctor> busyDoctors(){
-        return null;
-    }
-
-    /**
-     * returns list of strings
-     * containing the name of the doctor and the relative number of patients
-     * with the relative number of patients, sorted by decreasing number.<br>
-     * The string must be formatted as "<i>### : ID SURNAME NAME</i>" where <i>###</i>
-     * represent the number of patients (printed on three characters).
-     */
-    Collection<String> doctorsByNumPatients(){
-        return null;
-    }
-
-    /**
-     * computes the number of
-     * patients per (their doctor's) specialization.
-     * The elements are sorted first by decreasing count and then by alphabetic specialization.<br>
-     * The strings are structured as "<i>### - SPECIALITY</i>" where <i>###</i>
-     * represent the number of patients (printed on three characters).
-     */
-    public Collection<String> countPatientsPerSpecialization(){
-        return null;
+    public void assignPatientToDoctor(String ssn, String badgeID) throws NoSuchPatient, NoSuchDoctor {
+        Person p = getPatient(ssn);
+        Doctor d = getDoctor(badgeID);
+        d.addPatient(p);
+        p.setDoctor(d);
     }
 
     public void loadData(String path) throws IOException {
+        try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                try {
+                    String[] parts = line.split(";");
+                    if (parts[0].equals("P") && parts.length == 4) {
+                        addPatient(parts[1], parts[2], parts[3]);
+                    } else if (parts[0].equals("M") && parts.length == 6) {
+                        addDoctor(parts[2], parts[3], parts[4], parts[1], parts[5]);
+                    }
+                } catch (Exception ignored) {}
+            }
+        }
+    }
 
+    public Collection<Doctor> idleDoctors() {
+        return doctors.values().stream()
+                .filter(d -> d.getPatients().isEmpty())
+                .sorted(Comparator.comparing(Doctor::getFirstName))
+                .collect(Collectors.toList());
+    }
+
+    public Collection<Doctor> busyDoctors() {
+        double avg = doctors.values().stream()
+                .mapToInt(d -> d.getPatients().size()).average().orElse(0);
+        return doctors.values().stream()
+                .filter(d -> d.getPatients().size() > avg)
+                .sorted(Comparator.comparing(Doctor::getFirstName))
+                .collect(Collectors.toList());
+    }
+
+    public List<String> doctorsByNumPatients() {
+        return doctors.values().stream()
+                .sorted(Comparator.comparingInt((Doctor d) -> d.getPatients().size()).reversed())
+                .map(d -> String.format("%3d: %s %s", d.getPatients().size(), d.getFirstName(), d.getLastName()))
+                .collect(Collectors.toList());
+    }
+
+    public List<String> countPatientsPerSpecialization() {
+        Map<String, Long> specMap = doctors.values().stream()
+                .collect(Collectors.groupingBy(Doctor::getSpecialization,
+                        Collectors.summingLong(d -> d.getPatients().size())));
+
+        return specMap.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder())
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .map(e -> String.format("%3d %s", e.getValue(), e.getKey()))
+                .collect(Collectors.toList());
     }
 }
